@@ -57,6 +57,8 @@ class GDNAttentionMetadata:
     batch_ptr: torch.Tensor | None = None
     token_chunk_offset_ptr: torch.Tensor | None = None
 
+    seq_lens_list: list[int] = None
+    actual_seq_lengths_q: list[int] = None
 
 class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]):
     _cudagraph_support = AttentionCGSupport.UNIFORM_BATCH
@@ -325,6 +327,10 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             non_spec_query_start_loc = self.non_spec_query_start_loc[: batch_size + 1]
             non_spec_query_start_loc[num_decodes + 1 :].fill_(non_spec_num_query_tokens)
 
+        seq_lens = common_attn_metadata.seq_lens
+        num_reqs = common_attn_metadata.num_reqs
+        query_start_loc_cpu = common_attn_metadata.query_start_loc_cpu[:num_reqs + 1]
+
         attn_metadata = GDNAttentionMetadata(
             num_prefills=num_prefills,
             num_prefill_tokens=num_prefill_tokens,
@@ -345,6 +351,8 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             nums_dict=nums_dict,
             batch_ptr=batch_ptr,
             token_chunk_offset_ptr=token_chunk_offset_ptr,
+            seq_lens_list=seq_lens.tolist(),
+            actual_seq_lengths_q=query_start_loc_cpu[1:].tolist()
         )
         return attn_metadata
 
